@@ -371,7 +371,11 @@ def apply_mobile_css() -> None:
             background: #f7f9fc;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
+            color: #111827;
             padding: 0.75rem;
+        }
+        div[data-testid="stMetric"] * {
+            color: inherit !important;
         }
         @media (max-width: 768px) {
             .block-container {
