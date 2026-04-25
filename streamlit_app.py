@@ -278,30 +278,50 @@ def render_delete_control() -> None:
             st.rerun()
 
 
+def render_day_cards(day: dict[str, Any]) -> None:
+    for item in day.get("items", []):
+        with st.container(border=True):
+            time_value = item.get("time") or "시간 미정"
+            category = item.get("category") or "분류 없음"
+            st.markdown(f"**{time_value}** · {category}")
+            st.markdown(f"#### {item.get('place', '')}")
+
+            area = item.get("area", "")
+            address = item.get("address", "")
+            if area or address:
+                st.caption(" · ".join(part for part in [area, address] if part))
+
+            memo = item.get("memo", "")
+            if memo:
+                st.write(memo)
+
+
 def render_schedule(start_date: date) -> None:
     st.subheader("일정표")
     for day_index, day in enumerate(st.session_state.working_plan.get("days", [])):
         day_date = start_date + timedelta(days=day.get("day", 1) - 1)
         st.markdown(f"### Day {day.get('day')} · {day_date:%Y-%m-%d} · {day.get('title', '')}")
+        render_day_cards(day)
 
-        edited = st.data_editor(
-            items_to_dataframe(day.get("items", [])),
-            key=f"editor-{st.session_state.selected_plan_id}-{st.session_state.edit_version}-{day_index}",
-            num_rows="dynamic",
-            hide_index=True,
-            use_container_width=True,
-            column_config={
-                "time": st.column_config.TextColumn("방문 시간", width="small"),
-                "place": st.column_config.TextColumn("장소명", required=True, width="medium"),
-                "category": st.column_config.TextColumn("카테고리", width="small"),
-                "area": st.column_config.TextColumn("지역", width="small"),
-                "address": st.column_config.TextColumn("주소", width="medium"),
-                "memo": st.column_config.TextColumn("메모", width="large"),
-                "lat": st.column_config.NumberColumn("위도", format="%.6f", width="small"),
-                "lon": st.column_config.NumberColumn("경도", format="%.6f", width="small"),
-            },
-        )
-        sync_day_items(day_index, edited)
+        with st.expander("표로 수정하기", expanded=False):
+            edited = st.data_editor(
+                items_to_dataframe(day.get("items", [])),
+                key=f"editor-{st.session_state.selected_plan_id}-{st.session_state.edit_version}-{day_index}",
+                num_rows="dynamic",
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "time": st.column_config.TextColumn("방문 시간", width="small"),
+                    "place": st.column_config.TextColumn("장소명", required=True, width="medium"),
+                    "category": st.column_config.TextColumn("카테고리", width="small"),
+                    "area": st.column_config.TextColumn("지역", width="small"),
+                    "address": st.column_config.TextColumn("주소", width="medium"),
+                    "memo": st.column_config.TextColumn("메모", width="large"),
+                    "lat": st.column_config.NumberColumn("위도", format="%.6f", width="small"),
+                    "lon": st.column_config.NumberColumn("경도", format="%.6f", width="small"),
+                },
+            )
+            sync_day_items(day_index, edited)
 
 
 def render_sidebar(data: dict[str, Any]) -> date:
@@ -340,6 +360,9 @@ def apply_mobile_css() -> None:
     st.markdown(
         """
         <style>
+        html, body, [class*="css"] {
+            letter-spacing: 0;
+        }
         .block-container {
             padding-top: 1rem;
             padding-bottom: 2rem;
@@ -354,6 +377,49 @@ def apply_mobile_css() -> None:
             .block-container {
                 padding-left: 0.75rem;
                 padding-right: 0.75rem;
+            }
+            h1 {
+                font-size: 2.05rem !important;
+                line-height: 1.18 !important;
+                margin-bottom: 0.75rem !important;
+            }
+            h2 {
+                font-size: 1.55rem !important;
+                line-height: 1.22 !important;
+                margin-top: 1rem !important;
+            }
+            h3 {
+                font-size: 1.2rem !important;
+                line-height: 1.25 !important;
+            }
+            h4 {
+                font-size: 1.08rem !important;
+                line-height: 1.25 !important;
+                margin: 0.2rem 0 0.35rem 0 !important;
+            }
+            p, li, .stMarkdown, .stCaptionContainer {
+                font-size: 0.95rem !important;
+                line-height: 1.55 !important;
+            }
+            div[data-testid="stMetric"] {
+                padding: 0.65rem 0.75rem;
+            }
+            div[data-testid="stMetricLabel"] {
+                font-size: 0.85rem !important;
+            }
+            div[data-testid="stMetricValue"] {
+                font-size: 1.8rem !important;
+                line-height: 1.15 !important;
+            }
+            div[data-baseweb="tab-list"] {
+                gap: 0.15rem;
+                overflow-x: auto;
+                scrollbar-width: none;
+            }
+            button[data-baseweb="tab"] {
+                padding-left: 0.4rem;
+                padding-right: 0.4rem;
+                min-width: max-content;
             }
             div[data-testid="stDataFrame"] {
                 font-size: 0.85rem;
