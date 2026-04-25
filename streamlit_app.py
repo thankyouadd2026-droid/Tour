@@ -7,6 +7,7 @@ import uuid
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 import folium
 import pandas as pd
@@ -71,6 +72,43 @@ def valid_coordinate(lat: Any, lon: Any) -> bool:
     lat_value = parse_optional_float(lat)
     lon_value = parse_optional_float(lon)
     return lat_value is not None and lon_value is not None
+
+
+def google_maps_location(item: dict[str, Any]) -> str:
+    lat = parse_optional_float(item.get("lat"))
+    lon = parse_optional_float(item.get("lon"))
+    if lat is not None and lon is not None:
+        return f"{lat},{lon}"
+
+    address = clean_text(item.get("address"))
+    if address:
+        return address
+
+    return clean_text(item.get("place"))
+
+
+def google_maps_search_url(item: dict[str, Any]) -> str:
+    place = clean_text(item.get("place"))
+    address = clean_text(item.get("address"))
+    query = " ".join(part for part in [place, address] if part) or google_maps_location(item)
+    return "https://www.google.com/maps/search/?" + urlencode({"api": "1", "query": query})
+
+
+def google_maps_directions_url(items: list[dict[str, Any]]) -> str | None:
+    locations = [location for item in items if (location := google_maps_location(item))]
+    if len(locations) < 2:
+        return None
+
+    params = {
+        "api": "1",
+        "origin": locations[0],
+        "destination": locations[-1],
+        "travelmode": "driving",
+    }
+    if len(locations) > 2:
+        params["waypoints"] = "|".join(locations[1:-1])
+
+    return "https://www.google.com/maps/dir/?" + urlencode(params, safe="|,")
 
 
 def items_to_dataframe(items: list[dict[str, Any]]) -> pd.DataFrame:
@@ -295,12 +333,25 @@ def render_day_cards(day: dict[str, Any]) -> None:
             if memo:
                 st.write(memo)
 
+            st.link_button(
+                "Google Maps에서 열기",
+                google_maps_search_url(item),
+                use_container_width=True,
+            )
+
 
 def render_schedule(start_date: date) -> None:
     st.subheader("일정표")
     for day_index, day in enumerate(st.session_state.working_plan.get("days", [])):
         day_date = start_date + timedelta(days=day.get("day", 1) - 1)
         st.markdown(f"### Day {day.get('day')} · {day_date:%Y-%m-%d} · {day.get('title', '')}")
+        directions_url = google_maps_directions_url(day.get("items", []))
+        if directions_url:
+            st.link_button(
+                f"Day {day.get('day')} Google Maps 길찾기",
+                directions_url,
+                use_container_width=True,
+            )
         render_day_cards(day)
 
         with st.expander("표로 수정하기", expanded=False):
